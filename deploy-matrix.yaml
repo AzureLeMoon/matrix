@@ -27,6 +27,7 @@
     # - { role: vaultwarden, tags: vaultwarden, when: enable.vaultwarden | default(false) }
     # - { role: hugo, tags: hugo, when: enable.hugo | default(false) }
     # - { role: syncthing, tags: syncthing, when: enable.syncthing | default(false) }
+    - { role: element-web, tags: element_web, when: enable.element_web | default(false) }
     - { role: tuwunel, tags: tuwunel, when: enable.tuwunel | default(false) }
 
     # [PROTECTION]

@@ -68,6 +68,7 @@ enable:
   syncthing: false
   tuwunel: true
   tuwunel_livekit: true
+  element_web: true
 
   # Maintenance
   restic: false
