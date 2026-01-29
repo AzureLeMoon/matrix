@@ -1,0 +1,8 @@
+use-auth-secret
+static-auth-secret={{coturn.auth_secret}}
+realm={{coturn.domain}}
+no-tcp-relay
+#cert=/etc/coturn/certs/fullchain.pem
+#pkey=/etc/coturn/certs/privkey.pem
+min-port= {{ coturn.ports.udp_start }}
+max-port= {{ coturn.ports.udp_end }}

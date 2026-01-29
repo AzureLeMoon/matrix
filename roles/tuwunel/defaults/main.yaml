@@ -1,0 +1,89 @@
+---
+tuwunel:
+  service: "tuwunel"
+
+  # Images (Compact)
+  image: "docker.io/jevolk/tuwunel:latest"
+
+  # Domains
+  domain: "matrix.{{ domain.base }}"
+  port: 8008
+  server_name: "{{ domain.base }}"
+
+  # Paths
+  path: "{{ docker.base_dir }}/tuwunel"
+
+  # --- CONFIGURATION ---
+  config:
+    allow_registration: true
+    allow_federation: false
+    allow_encryption: true
+    max_request_size: 30971520 # 20MB
+    # Ulimits (critical for high load)
+    ulimit: 1048567
+    log_level: "info"
+
+  # --- SECRETS (From Vault) ---
+  registration_token: "{{ vault_matrix.registration_token | default('') }}"
+
+  # --- LDAP ---
+  ldap:
+    enabled: true
+    uri: "ldap://lldap:3890"
+    base_dn: "ou=people,dc=netetkharabe,dc=ir"
+    bind_dn: "uid={{ vault_identity.lldap.admin_login }},ou=people,dc=netetkharabe,dc=ir"
+    bind_password: "{{ vault_identity.lldap.admin_password | default('') }}"
+    # Password file inside container
+    bind_password_file: "/var/lib/tuwunel/.ldap_bind_password"
+
+  # --- RESOURCES ---
+  memory: "{{ docker.memory | default('384M') }}"
+
+  # --- INTEGRATIONS ---
+  autoheal: false
+
+  # --- HEALTHCHECK ---
+  healthcheck:
+    interval: "30s"
+    timeout: "5s"
+    retries: 3
+
+
+# === LIVEKIT SUB-COMPONENT ===
+livekit:
+  service: "livekit"
+  image: "livekit/livekit-server:latest"
+  domain: "livekit.{{ domain.base }}"
+
+  # Secrets
+  key: "{{ vault_matrix.livekit.key }}"
+  secret: "{{ vault_matrix.livekit.secret }}"
+
+  # Ports (Inherit from Global Vars)
+  ports:
+    http: 7880
+    tcp: 7881
+    udp_start: 50150
+    udp_end: 50200
+
+  memory: "384M"
+  log_level: "debug"
+
+
+# === JWT SERVICE SUB-COMPONENT ===
+jwt_service:
+  service: "lk-jwt-service"
+  image: "ghcr.io/element-hq/lk-jwt-service:latest"
+  port: 8081
+  memory: "64M"
+  log_level: "debug"
+
+
+coturn:
+  domain: turn.{{ domain.base }}
+  service: "coturn"
+  image: "docker.io/coturn/coturn"
+  auth_secret: "{{vault_matrix.coturn.auth_secret}}"
+  ports:  
+    udp_start: 50201
+    udp_end: 65535

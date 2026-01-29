@@ -1,0 +1,63 @@
+[global]
+server_name = "{{ tuwunel.server_name }}"
+database_path = "/var/lib/tuwunel"
+
+address = ["0.0.0.0"]
+port = {{ tuwunel.port }}
+
+# Registration
+allow_registration = {{ tuwunel.config.allow_registration | lower }}
+{% if tuwunel.registration_token %}
+registration_token = "{{ tuwunel.registration_token }}"
+{% endif %}
+
+# Federation
+allow_federation = {{ tuwunel.config.allow_federation | lower }}
+federate_created_rooms = true
+
+# Security
+allow_encryption = {{ tuwunel.config.allow_encryption | lower }}
+allow_public_room_directory_over_federation = false
+require_auth_for_profile_requests = true
+allow_device_name_federation = false
+
+# Performance
+max_request_size = {{ tuwunel.config.max_request_size }}
+trusted_servers = ["matrix.org"]
+
+# Logging
+log = "{{ tuwunel.config.log_level }}"
+log_colors = true
+
+# Well-known delegation
+[global.well_known]
+client = "https://{{ tuwunel.domain }}"
+server = "{{ tuwunel.domain }}:443"
+
+# MatrixRTC/LiveKit configuration (MSC4143)
+[[global.well_known.rtc_foci]]
+type = "livekit"
+livekit_service_url = "https://{{ livekit.domain }}"
+livekit_sfu_url = "https://{{ livekit.domain }}/sfu/get"
+
+# Delayed events 
+max_event_delay_duration = "24h"
+
+# turn configs
+turn_uris = ["turn:{{ coturn.domain }}?transport=udp","turn:{{ coturn.domain }}?transport=tcp"]
+turn_secret = "{{coturn.auth_secret}}"
+
+{% if tuwunel.ldap.enabled %}
+# LDAP Configuration
+[global.ldap]
+enable = true
+uri = "{{ tuwunel.ldap.uri }}"
+base_dn = "{{ tuwunel.ldap.base_dn }}"
+bind_dn = "{{ tuwunel.ldap.bind_dn }}"
+bind_password_file = "{{ tuwunel.ldap.bind_password_file }}"
+# Используем default фильтры, если не заданы
+filter = "(&(objectClass=person)(uid={username}))"
+uid_attribute = "uid"
+mail_attribute = "mail"
+name_attribute = "cn"
+{% endif %}

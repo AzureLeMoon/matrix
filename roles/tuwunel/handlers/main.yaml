@@ -1,0 +1,7 @@
+---
+- name: Restart Tuwunel
+  community.docker.docker_compose_v2:
+    project_src: "{{ tuwunel.path }}"
+    state: restarted
+  become: true
+  become_user: "{{ deploy_user }}"

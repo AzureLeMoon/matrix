@@ -1,0 +1,80 @@
+---
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - tuwunel.domain is defined
+      - livekit.key is defined
+      - deploy_user is defined
+    fail_msg: "Required variables missing for Tuwunel/LiveKit"
+  tags: [tuwunel, check]
+
+- name: Ensure Tuwunel directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0755"
+  loop:
+    - "{{ tuwunel.path }}"
+    - "{{ tuwunel.path }}/config"
+    - "{{ tuwunel.path }}/data"
+  tags: [tuwunel, filesystem]
+
+- name: Create LDAP Bind Password file
+  ansible.builtin.copy:
+    dest: "{{ tuwunel.path }}/.ldap_bind_password"
+    content: "{{ tuwunel.ldap.bind_password }}"
+    mode: '0600'
+    owner: "{{ deploy_user }}"
+  no_log: true
+  when: tuwunel.ldap.enabled | bool
+  tags: [tuwunel, config]
+
+- name: Render Configs
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ tuwunel.path }}/config/{{ item.dest }}"
+    mode: "0644"
+    owner: "{{ deploy_user }}"
+  loop:
+    - { src: "tuwunel.toml.j2", dest: "tuwunel.toml" }
+    - { src: "livekit.yaml.j2", dest: "livekit.yaml" }
+    - { src: "coturn.conf.j2", dest: "coturn.conf" }
+
+  notify: Restart Tuwunel
+  tags: [tuwunel, config]
+
+- name: Configure UFW for Matrix & LiveKit
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: "8448", proto: "tcp", comment: "Matrix Federation" }
+    - { port: "{{ livekit.ports.tcp }}", proto: "tcp", comment: "LiveKit TCP" }
+    - { port: "{{ livekit.ports.udp_start }}:{{ livekit.ports.udp_end }}", proto: "udp", comment: "LiveKit WebRTC" }
+    - { port: "{{ coturn.ports.udp_start }}:{{ coturn.ports.udp_end }}", proto: "udp", comment: "coturn" }
+
+  tags: [tuwunel, firewall]
+
+- name: Render docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ tuwunel.path }}/docker-compose.yml"
+    mode: "0640"
+    owner: "{{ deploy_user }}"
+    group: docker
+  notify: Restart Tuwunel
+  tags: [tuwunel, config]
+
+- name: Deploy Tuwunel Stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ tuwunel.path }}"
+    state: present
+    pull: policy
+    remove_orphans: true
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: [tuwunel, deploy]

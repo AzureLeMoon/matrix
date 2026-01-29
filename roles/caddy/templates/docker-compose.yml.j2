@@ -1,0 +1,43 @@
+services:
+  # === 4. Caddy === 
+  {{ caddy.service }}:
+    image: {{ caddy.base_image }}
+    container_name: {{ caddy.service }}
+    cap_add:
+      - NET_ADMIN
+    #network_mode: "host"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    networks:
+      - {{ docker.network }}
+    volumes:
+        - "{{ caddy.path }}/data:/data"
+        - "{{ caddy.path }}/config:/etc/caddy"
+{% if caddy.logs.enabled | bool %}
+        - "{{ caddy.logs.path }}:/var/log/caddy"
+{% endif %}
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          memory: {{ caddy.memory }}
+
+    environment:    
+      # ACME
+      ACME_EMAIL: "{{ caddy.email }}"    
+      # Timezone
+      TZ: "{{ system.timezone | default('UTC') }}"
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/metrics"]
+      interval: {{ caddy.healthcheck.interval }}
+      timeout: {{ caddy.healthcheck.timeout }}
+      retries: {{ caddy.healthcheck.retries }}
+      start_period: {{ caddy.healthcheck.start_period }}
+
+networks:
+  {{ docker.network }}:
+    external: true

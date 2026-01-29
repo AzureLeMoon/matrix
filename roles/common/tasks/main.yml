@@ -1,0 +1,20 @@
+---
+- name: System setup and packages
+  ansible.builtin.import_tasks: packages.yml
+  tags: [common, packages]
+
+# - name: Block RKN and malicious subnets (ipset)
+#   ansible.builtin.import_tasks: block_rkn.yml
+#   tags: [common, security, rkn]
+
+- name: Security and Firewall configuration
+  ansible.builtin.import_tasks: security.yml
+  tags: [common, security]
+
+- name: Performance tuning (Sysctl, ZRAM, Network)
+  ansible.builtin.import_tasks: tuning.yml
+  tags: [common, tuning]
+
+- name: System Maintenance Tasks (Cron, Auto-cleanup)
+  ansible.builtin.import_tasks: maintenance.yml
+  tags: [common, maintenance]

@@ -1,0 +1,28 @@
+port: {{ livekit.ports.http }}
+bind_addresses:
+  - ""
+
+rtc:
+    node_ip: "{{ ansible_default_ipv4.address }}"
+    tcp_port: {{ livekit.ports.tcp }}
+    port_range_start: {{ livekit.ports.udp_start }}
+    port_range_end: {{ livekit.ports.udp_end }}
+    use_external_ip: true
+    enable_loopback_candidate: false
+    turn_servers:
+    - host: {{ coturn.domain }}
+      port: 3478
+      protocol: udp
+      secret: "{{ coturn.auth_secret}}"
+
+keys:
+  {{ livekit.key }}: {{ livekit.secret }}
+
+# Logging
+logging:
+    level: {{ livekit.log_level }}
+    sample: false
+
+# TURN отключен
+turn:
+    enabled: false

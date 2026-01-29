@@ -1,0 +1,71 @@
+---
+identity:
+  service: "identity"
+
+  # Paths
+  path: "{{ docker.base_dir }}/identity"
+  data_dir: "{{ docker.base_dir }}/identity/data"
+
+  # --- LLDAP ---
+  lldap:
+    image: "lldap/lldap:latest"
+    domain: "ldap.{{ domain.base }}"
+    port:
+      http: 17170
+      ldap: 3890
+    base_dn: "dc=netetkharabe,dc=ir"
+    memory: "128M"
+    # Secrets from Vault
+    admin:
+      dn: "{{ vault_identity.lldap.admin_login }}"
+      password: "{{ vault_identity.lldap.admin_password }}"
+      email: "{{ vault_identity.lldap.admin_email }}"
+    secrets:
+      seed: "{{ vault_identity.lldap.key_seed }}"
+      jwt_secret: "{{ vault_identity.lldap.jwt_secret }}"
+
+  # --- POCKET ID ---
+  pocketid:
+    image: "ghcr.io/pocket-id/pocket-id:latest"
+    domain: "id.{{ domain.base }}"
+    port: 1411
+    memory: "256M"
+    license_key: "" # MaxMind Key (Optional)
+
+    # LDAP Mapping
+    ldap:
+      base_dn: "ou=people,dc=netetkharabe,dc=ir" # Hardcoded base_dn suffix or use lldap.base_dn
+      admin_group: "lldap_admin"
+      attributes:
+        user:
+          uid: "uid"
+          username: "uid"
+          email: "mail"
+          firstname: "givenname"
+          lastname: "sn"
+          picture: "jpegphoto"
+        group:
+          member: "member"
+          uid: "cn"
+          name: "cn"
+
+  # --- TINY AUTH (OIDC Proxy) ---
+  tinyauth:
+    image: "ghcr.io/steveiliop56/tinyauth:latest"
+    domain: "auth.{{ domain.base }}"
+    port: 3000
+    memory: "128M"
+    auto_redirect: true
+    # Secrets (Optional, if not auto-generated)
+    client_id: "{{ vault_identity.tinyauth.pocketid_client_id | default('') }}"
+    client_secret: "{{ vault_identity.tinyauth.pocketid_client_secret | default('') }}"
+
+  # --- INTEGRATIONS ---
+  autoheal: false
+
+  # --- HEALTHCHECK ---
+  healthcheck:
+    interval: "30s"
+    timeout: "5s"
+    retries: 3
+    start_period: "60s"

@@ -1,0 +1,117 @@
+{
+    email {{ caddy.email }}
+
+{% if caddy.logs.enabled | bool %}
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10MiB
+            roll_keep 5
+        }
+        format json
+    }
+{% endif %}
+
+    servers :443 {
+        protocols h1 h2 h3
+        listener_wrappers {
+            http_redirect
+            tls
+        }
+    }
+}
+
+(secure-headers) {
+    header {
+        Strict-Transport-Security "\"max-age=31536000; includeSubDomains\""
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+{{ tuwunel.domain }} {
+    # TLS configuration using your custom certificates
+    # tls /etc/ssl/certs/custom.crt /etc/ssl/private/custom.key
+    import "secure-headers"
+    route {      
+        handle_path /.well-known/matrix/client {
+            header Access-Control-Allow-Origin *
+            header +Content-Type application/json
+            respond `{"m.homeserver":{"base_url":"https://{{ tuwunel.domain }}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://{{ livekit.domain }}", "jwt_service_url":"https://{{ livekit.domain }}/sfu/get"}]}`
+        }
+        handle_path /.well-known/matrix/client {
+            header Access-Control-Allow-Origin *
+            header +Content-Type application/json
+            respond `{"m.server":"{{ tuwunel.domain }}:443"}`
+        }
+
+        reverse_proxy {{tuwunel.service}}:8008
+    }
+}
+
+{{ tuwunel.server_name }} {
+    # TLS configuration using your custom certificates
+    # tls /etc/ssl/certs/custom.crt /etc/ssl/private/custom.key
+    import "secure-headers"
+    route {      
+        handle_path /.well-known/matrix/client {
+            header Access-Control-Allow-Origin *
+            header +Content-Type application/json
+            respond `{"m.homeserver":{"base_url":"https://{{ tuwunel.domain }}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://{{ livekit.domain }}", "jwt_service_url":"https://{{ livekit.domain }}/sfu/get"}]}`        
+        }
+        handle_path /.well-known/matrix/client {
+            header Access-Control-Allow-Origin *
+            header +Content-Type application/json
+            respond `{"m.server":"{{ tuwunel.domain }}:443"}`        
+        }
+    }
+
+    reverse_proxy {{tuwunel.service}}:8008
+}
+
+{{livekit.domain}} {
+    import "secure-headers"
+    # This is matrix-rtc-jwt
+    @jwt_service {
+        path /sfu/get* /healthz*
+    }
+    handle @jwt_service {
+        reverse_proxy {{ jwt_service.service }}:{{ jwt_service.port }} {
+            header_up Host {host}
+            header_up X-Forwarded-Server {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    handle {
+        reverse_proxy {{ livekit.service }}:{{ livekit.ports.http }} {
+            header_up Connection "upgrade"
+            header_up Upgrade {http.request.header.Upgrade}
+            header_up Host {host}
+            header_up X-Forwarded-Server {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}
+
+
+{{ identity.lldap.domain }} {
+
+    reverse_proxy lldap:17170
+    import "secure-headers"
+}
+
+{{ identity.pocketid.domain }} {
+    
+    reverse_proxy pocketid:1411
+    import "secure-headers"
+}
+
+{{ identity.tinyauth.domain }} {
+    
+    reverse_proxy tinyauth:3000
+    import "secure-headers"
+}

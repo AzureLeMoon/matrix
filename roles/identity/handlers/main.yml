@@ -1,0 +1,6 @@
+---
+- name: Restart PocketID
+  community.docker.docker_container:
+    name: pocketid
+    state: started
+    restart: true

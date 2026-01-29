@@ -1,0 +1,14 @@
+---
+- name: Ensure /etc/docker directory exists
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: '0755'
+
+- name: Configure Docker Daemon (daemon.json)
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    # БЫЛО: docker.daemon
+    content: "{{ docker_daemon_config | to_nice_json }}"
+    mode: '0644'
+  notify: Restart Docker

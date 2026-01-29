@@ -1,0 +1,164 @@
+---
+- name: Ensure required kernel modules are loaded
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+    persistent: present
+  loop:
+    - tcp_bbr
+    - nf_conntrack
+
+- name: Tune network stack for WireGuard (Optimized for 4GB RAM)
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-wireguard.conf
+    reload: false
+  loop:
+    - { name: 'net.core.rmem_max', value: '16777216' }
+    - { name: 'net.core.wmem_max', value: '16777216' }
+    - { name: 'net.core.rmem_default', value: '16777216' }
+    - { name: 'net.core.wmem_default', value: '16777216' }
+    - { name: 'net.ipv4.tcp_rmem', value: '4096 131072 16777216' }
+    - { name: 'net.ipv4.tcp_wmem', value: '4096 65536 16777216' }
+    - { name: 'net.ipv4.udp_mem', value: '4096 87380 16777216' }
+    - { name: 'net.core.netdev_max_backlog', value: '16384' }
+    - { name: 'net.core.somaxconn', value: '8192' }
+    - { name: 'net.core.default_qdisc', value: 'fq' }
+    - { name: 'net.ipv4.tcp_congestion_control', value: 'bbr' }
+    - { name: 'net.ipv4.tcp_fastopen', value: '3' }
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+    - { name: 'net.ipv6.conf.all.forwarding', value: '1' }
+    - { name: 'net.ipv4.tcp_mtu_probing', value: '1' }
+    - { name: 'fs.file-max', value: '1048576' }
+    - { name: 'net.netfilter.nf_conntrack_max', value: '262144' }
+    - { name: 'net.netfilter.nf_conntrack_tcp_timeout_established', value: '7200' }
+  notify: Reload sysctl
+
+- name: Tune Virtual Memory (swap & cache)
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-memory.conf
+    reload: false
+  loop:
+    # Swappiness 10: используем swap только когда память реально кончается
+    # (но ZRAM все равно будет использоваться раньше, так как у него выше приоритет)
+    - { name: 'vm.swappiness', value: '10' }
+    - { name: 'vm.vfs_cache_pressure', value: '50' }
+    - { name: 'vm.dirty_ratio', value: '10' }
+    - { name: 'vm.dirty_background_ratio', value: '5' }
+  notify: Reload sysctl
+
+# ==========================================
+# 1. ZRAM (Fast compressed RAM-swap)
+# ==========================================
+- name: Configure zram swap (lz4 for lower latency)
+  ansible.builtin.copy:
+    dest: /etc/default/zramswap
+    mode: '0644'
+    content: |
+      ALGO=lz4
+      PERCENT=25
+  notify: Restart zramswap
+
+- name: Enable zramswap
+  ansible.builtin.systemd:
+    name: zramswap
+    enabled: true
+    state: started
+
+# ==========================================
+# 2. Disk Swap File (Safety Net for OOM)
+# ==========================================
+- name: Check if swap file exists
+  ansible.builtin.stat:
+    path: /swapfile
+  register: common_swap_file_check  # <--- Добавили префикс common_
+
+- name: Create swap file (4GB)
+  ansible.builtin.command: fallocate -l 4G /swapfile
+  when: not common_swap_file_check.stat.exists
+  changed_when: true  # <--- Явно говорим, что команда меняет состояние
+
+- name: Set permissions on swap file
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Format swap file
+  ansible.builtin.command: mkswap /swapfile
+  when: not common_swap_file_check.stat.exists
+  changed_when: true  # <--- Явно говорим, что команда меняет состояние
+
+- name: Enable swap file
+  ansible.builtin.command: swapon /swapfile
+  when: not common_swap_file_check.stat.exists
+  changed_when: true  # <--- Явно говорим, что команда меняет состояние
+  failed_when: false # Ignore if already active
+
+- name: Add swap to fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: '/swapfile none swap sw 0 0'
+    state: present
+
+# ==========================================
+# Network Offloads
+# ==========================================
+- name: Enable network offload features (gro, gso)
+  ansible.builtin.command:
+    cmd: ethtool -K {{ ansible_default_ipv4.interface }} gro on gso on
+  register: common_ethtool_offload
+  changed_when: false
+  failed_when:
+    - common_ethtool_offload.rc != 0
+    - "'Operation not supported' not in common_ethtool_offload.stderr"
+    - "'Operation not permitted' not in common_ethtool_offload.stderr"
+
+- name: Enable scatter-gather (tx-nocache-copy)
+  ansible.builtin.command:
+    cmd: ethtool -K {{ ansible_default_ipv4.interface }} tx-nocache-copy on
+  register: common_ethtool_nocache
+  changed_when: false
+  failed_when:
+    - common_ethtool_nocache.rc != 0
+    - "'Operation not supported' not in common_ethtool_nocache.stderr"
+    - "'fixed' not in common_ethtool_nocache.stderr"
+
+- name: Persist offloads via systemd
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/network-offloads.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Enable network offloads
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=-/usr/sbin/ethtool -K {{ ansible_default_ipv4.interface }} gro on gso on
+      ExecStart=-/usr/sbin/ethtool -K {{ ansible_default_ipv4.interface }} tx-nocache-copy on
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Enable and start network-offloads
+
+# [ OTHER ]
+- name: Optimize systemd-journald configuration
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf
+    mode: '0644'
+    content: |
+      [Journal]
+      SystemMaxUse=200M
+      SystemMaxFileSize=50M
+      MaxRetentionSec=2week
+      Compress=yes
+      Storage=persistent
+  notify: Restart systemd-journald

@@ -1,0 +1,56 @@
+---
+# --- 1. SSH Access Management ---
+- name: Manage SSH keys for deploy user (Laptop + Vault keys)
+  ansible.posix.authorized_key:
+    user: "{{ deploy_user }}"
+    state: present
+    key: "{{ item }}"
+  loop: "{{ [lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519.pub')] + (vault_ssh_keys.additional_keys | default([])) }}"
+
+# --- 2. Firewall (UFW) ---
+- name: Limit SSH connections (anti-bruteforce)
+  community.general.ufw:
+    rule: limit
+    name: OpenSSH
+    comment: 'SSH rate limited'
+
+- name: Allow system utility ports (iperf3)
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: "5201", proto: "tcp", comment: "iperf3 TCP" }
+    - { port: "5201", proto: "udp", comment: "iperf3 UDP" }
+
+- name: Enable UFW with default deny
+  community.general.ufw:
+    state: enabled
+    policy: deny
+
+# --- 3. Kernel Hardening ---
+- name: Kernel security hardening
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-security.conf
+    reload: false
+  loop:
+    - { name: 'net.ipv4.conf.all.rp_filter', value: '2' }
+    - { name: 'net.ipv4.conf.default.rp_filter', value: '2' }
+    - { name: 'net.ipv4.conf.all.accept_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.default.accept_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.all.send_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.default.send_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.all.secure_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.all.accept_source_route', value: '0' }
+    - { name: 'net.ipv4.conf.default.accept_source_route', value: '0' }
+    - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { name: 'net.ipv4.icmp_ignore_bogus_error_responses', value: '1' }
+    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+    - { name: 'net.ipv4.conf.all.log_martians', value: '1' }
+    - { name: 'kernel.kptr_restrict', value: '2' }
+    - { name: 'kernel.dmesg_restrict', value: '1' }
+  notify: Reload sysctl

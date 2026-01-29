@@ -1,0 +1,73 @@
+---
+# ==============================================================================
+# 🌍 INFRASTRUCTURE
+# ==============================================================================
+domain:
+  base: "netetkharabe.ir"
+
+# [ USERS ]
+deploy_user: "ubuntu"
+
+admin:
+  username: "admin"
+  email: "{{ vault_infra.admin_email }}"
+  password: "{{ vault_infra.admin_password }}"
+
+# ==============================================================================
+# ⚙️ SYSTEM & DOCKER
+# ==============================================================================
+docker:
+  base_dir: "/opt/docker"
+  network: "web"
+
+  # --- Container Defaults (No nested 'defaults' key now) ---
+  timezone: "Asia/Tehran"
+  image_tag: "latest"
+  restart_policy: "unless-stopped"
+  memory_limit: "256M"
+
+  # Permissions (LSIO)
+  puid: "1000"
+  pgid: "1000"
+
+  # Healthcheck Strategy
+  healthcheck:
+    interval: "60s"
+    timeout: "10s"
+    retries: 3
+    start_period: "10s"
+
+system:
+  swap_size: "4G"
+  zram_percent: "25"
+
+# ==============================================================================
+# 🛡️ FEATURE FLAGS
+# ==============================================================================
+enable:
+  # Network & Security
+  socket_proxy: false
+  caddy: true
+  crowdsec: false
+  identity: true
+  sablier: false
+  cloudflare_dns: false
+  amnezia: false
+
+  # Ops & Monitoring
+  autoheal: true
+  watchtower: false
+  gatus: false
+  dozzle: false
+  beszel: false
+
+  # Applications
+  homer: false
+  vaultwarden: false
+  hugo: false
+  syncthing: false
+  tuwunel: true
+  tuwunel_livekit: true
+
+  # Maintenance
+  restic: false

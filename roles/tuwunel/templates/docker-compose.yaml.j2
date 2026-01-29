@@ -1,0 +1,109 @@
+services:
+    {{ tuwunel.service }}:
+        image: {{ tuwunel.image }}
+        container_name: {{ tuwunel.service }}
+        restart: "unless-stopped"
+        ports: 
+        - "8448:8448"
+        deploy:
+            resources:
+                limits:
+                    memory: {{ tuwunel.memory }}
+        volumes:
+        - ./config/tuwunel.toml:/etc/tuwunel/tuwunel.toml:ro
+        - ./data:/var/lib/tuwunel
+{% if tuwunel.ldap.enabled %}
+        - ./.ldap_bind_password:{{ tuwunel.ldap.bind_password_file }}:ro
+{% endif %}
+
+        networks:
+        - {{ docker.network }}
+
+        environment:
+        - TUWUNEL_CONFIG=/etc/tuwunel/tuwunel.toml
+        - TUWUNEL_LOG={{ tuwunel.config.log_level }}
+        - TZ={{ system.timezone | default('UTC') }}
+
+        ulimits:
+            nofile:
+                soft: {{ tuwunel.config.ulimit }}
+                hard: {{ tuwunel.config.ulimit }}
+
+        healthcheck:
+            test: ["CMD", "tuwunel", "--version"]
+            interval: {{ tuwunel.healthcheck.interval }}
+            timeout: {{ tuwunel.healthcheck.timeout }}
+            retries: {{ tuwunel.healthcheck.retries }}
+            start_period: 40s
+    {% if tuwunel.autoheal | bool %}
+        autoheal: "true"
+    {% endif %}
+
+    {{ livekit.service }}:
+        image: {{ livekit.image }}
+        container_name: {{ livekit.service }}
+        restart: "unless-stopped"
+
+        deploy:
+            resources:
+                limits:
+                    memory: {{ livekit.memory }}
+
+        command: --config /etc/livekit.yaml
+
+        environment:
+        - TZ={{ system.timezone | default('UTC') }}
+
+        networks:
+        - {{ docker.network }}
+
+        ports:
+        - "{{ livekit.ports.http }}:{{ livekit.ports.http }}"
+        - "{{ livekit.ports.tcp }}:{{ livekit.ports.tcp }}"
+        - "{{ livekit.ports.udp_start }}-{{ livekit.ports.udp_end }}:{{ livekit.ports.udp_start }}-{{ livekit.ports.udp_end }}/udp"
+
+        volumes:
+        - ./config/livekit.yaml:/etc/livekit.yaml:ro
+
+        healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:{{ livekit.ports.http }}"]
+            interval: {{ tuwunel.healthcheck.interval }}
+            timeout: {{ tuwunel.healthcheck.timeout }}
+            retries: {{ tuwunel.healthcheck.retries }}
+            start_period: 20s
+    {% if tuwunel.autoheal | bool %}
+        autoheal: "true"
+    {% endif %}
+
+    {{ jwt_service.service }}:
+        image: {{ jwt_service.image }}
+        container_name: {{ jwt_service.service }}
+        restart: "unless-stopped"
+
+        deploy:
+            resources:
+                limits:
+                    memory: {{ jwt_service.memory }}
+
+        environment:
+        - LIVEKIT_JWT_BIND=:{{ jwt_service.port }}
+        - LIVEKIT_URL=wss://{{ livekit.domain }}
+        - LIVEKIT_KEY={{ livekit.key }}
+        - LIVEKIT_SECRET={{ livekit.secret }}
+        - LIVEKIT_FULL_ACCESS_HOMESERVERS={{ tuwunel.server_name }}
+        - LIVEKIT_LOG_LEVEL={{ jwt_service.log_level }}
+        - TZ={{ system.timezone | default('UTC') }}
+
+        networks:
+        - {{ docker.network }}
+
+    {{ coturn.service }}:
+        container_name: {{ coturn.service }}
+        image: {{ coturn.image }}
+        restart: unless-stopped
+        network_mode: "host"
+        volumes:
+            - ./config/coturn.conf:/etc/coturn/turnserver.conf        
+networks:
+  {{ docker.network }}:
+    external: true        

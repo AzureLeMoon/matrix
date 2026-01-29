@@ -1,0 +1,98 @@
+---
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - caddy.email is defined
+      - docker.network is defined
+      - deploy_user is defined
+    fail_msg: "Required variables missing for Caddy role"
+  tags: [caddy, check]
+
+- name: Ensure Caddy directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0755"
+  loop:
+    - "{{ caddy.path }}"
+    - "{{ caddy.path }}/config"
+    - "{{ caddy.path }}/data"
+    - "{{ caddy.logs.path }}"
+  tags: [caddy, filesystem]
+
+- name: Ensure Access Log file exists
+  ansible.builtin.file:
+    path: "{{ caddy.logs.path }}/access.log"
+    state: touch
+    owner: "root" # Caddy runs as root inside container by default
+    group: "root"
+    mode: "0644"
+  when: caddy.logs.enabled | bool
+  tags: [caddy, filesystem]
+
+- name: Render Configs
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0644"
+    owner: "{{ deploy_user }}"
+  loop:
+    - { src: "Caddyfile.j2", dest: "{{ caddy.path }}/config/Caddyfile" }
+    - { src: "Dockerfile.j2", dest: "{{ caddy.path }}/Dockerfile" }
+  register: caddy_configs
+  notify: Restart Caddy
+  tags: [caddy, config]
+
+- name: Render docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ caddy.path }}/docker-compose.yml"
+    mode: "0640"
+    owner: "{{ deploy_user }}"
+    group: docker
+  register: caddy_compose
+  notify: Restart Caddy
+  tags: [caddy, config]
+
+# - name: Create .dockerignore
+#   ansible.builtin.copy:
+#     dest: "{{ caddy.path }}/.dockerignore"
+#     content: |
+#       .git
+#       data
+#       config
+#       logs
+#   tags: [caddy, config]
+
+# - name: Build Caddy Image
+#   community.docker.docker_image:
+#     name: "{{ caddy.service }}:local"
+#     source: build
+#     build:
+#       path: "{{ caddy.path }}"
+#       pull: true
+#     # Пересобираем только если изменился Dockerfile или compose (force build)
+#     force_source: "{{ caddy_configs.changed or caddy_compose.changed }}"
+#   tags: [caddy, build]
+
+- name: Allow HTTP/HTTPS ports (UFW)
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    comment: "Caddy Web Server"
+  loop:
+    - "80"
+    - "443"
+  tags: [caddy, firewall]
+
+- name: Deploy Caddy Stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ caddy.path }}"
+    state: present 
+    remove_orphans: true
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: [caddy, deploy]

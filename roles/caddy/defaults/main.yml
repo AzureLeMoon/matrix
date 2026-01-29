@@ -1,0 +1,42 @@
+---
+caddy:
+  service: "caddy"
+
+  # Image Build Config
+  builder_image: "caddy:builder-alpine"
+  base_image: "caddy:alpine"
+
+  # Versions (Pinned for stability)
+  version:
+    docker_proxy: "v2.10.0" # v2.10.0 еще может быть unstable, проверь совместимость
+    sablier: "v1.0.1"
+
+  # ACME (Let's Encrypt)
+  email: "{{ admin.email | default('admin@example.com') }}" # Используем глобальную admin.email
+
+  # Paths
+  path: "{{ docker.base_dir }}/caddy"
+
+  # Logs
+  logs:
+    enabled: true
+    path: "{{ docker.base_dir }}/caddy/logs"
+
+  # Cloudflare DNS Challenge
+  cloudflare:
+    enabled: "{{ enable.cloudflare_dns | default(false) }}"
+    token: "{{ vault_caddy.cloudflare_token | default('') }}"
+
+  # Integration
+  socket_proxy: "{{ enable.socket_proxy | default(false) }}"
+  sablier_enabled: "{{ enable.sablier | default(false) }}"
+
+  # Resources
+  memory: "256M"
+
+  # Healthcheck
+  healthcheck:
+    interval: "30s"
+    timeout: "5s"
+    retries: 3
+    start_period: "10s"
