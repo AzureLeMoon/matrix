@@ -29,7 +29,7 @@
     }
 }
 
-{{ tuwunel.domain }} {
+{{ tuwunel.domain }}, {{ tuwunel.domain }}:8448 {
     # TLS configuration using your custom certificates
     # tls /etc/ssl/certs/custom.crt /etc/ssl/private/custom.key
     import "secure-headers"
@@ -49,7 +49,7 @@
     }
 }
 
-{{ tuwunel.server_name }} {
+{{ tuwunel.server_name }}, {{tuwunel.server_name}}:8448 {
     # TLS configuration using your custom certificates
     # tls /etc/ssl/certs/custom.crt /etc/ssl/private/custom.key
     import "secure-headers"

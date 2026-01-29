@@ -3,8 +3,6 @@ services:
         image: {{ tuwunel.image }}
         container_name: {{ tuwunel.service }}
         restart: "unless-stopped"
-        ports: 
-        - "8448:8448"
         deploy:
             resources:
                 limits:
