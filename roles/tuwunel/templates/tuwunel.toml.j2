@@ -17,7 +17,7 @@ federate_created_rooms = true
 
 # Security
 allow_encryption = {{ tuwunel.config.allow_encryption | lower }}
-allow_public_room_directory_over_federation = false
+allow_public_room_directory_over_federation = true
 require_auth_for_profile_requests = true
 allow_device_name_federation = false
 
@@ -60,4 +60,6 @@ filter = "(&(objectClass=person)(uid={username}))"
 uid_attribute = "uid"
 mail_attribute = "mail"
 name_attribute = "cn"
+admin_base_dn = "{{ tuwunel.ldap.bind_dn }}"
+admin_filter = "uid={{ vault_identity.lldap.admin_login }}"
 {% endif %}

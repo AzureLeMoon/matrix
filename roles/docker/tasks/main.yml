@@ -67,6 +67,8 @@
   community.docker.docker_network:
     name: "{{ docker.network }}"
     state: present
+    # driver_options:
+    #   com.docker.network.driver.mtu: 1450    
   tags: [docker, network]
 
 - name: Log into Docker Hub

@@ -4,8 +4,8 @@
 
   roles:
     # [SYSTEM]
-    #- { role: common, tags: common }
-    #- { role: docker, tags: docker }
+    - { role: common, tags: common }
+    - { role: docker, tags: docker }
 
     # [NETWORK]
     # - { role: socket_proxy, tags: socket_proxy, when: enable.socket_proxy | default(false) }

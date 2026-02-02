@@ -16,7 +16,7 @@ tuwunel:
   # --- CONFIGURATION ---
   config:
     allow_registration: true
-    allow_federation: false
+    allow_federation: true
     allow_encryption: true
     max_request_size: 30971520 # 20MB
     # Ulimits (critical for high load)

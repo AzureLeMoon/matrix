@@ -33,39 +33,40 @@
     # TLS configuration using your custom certificates
     # tls /etc/ssl/certs/custom.crt /etc/ssl/private/custom.key
     import "secure-headers"
-    route {      
-        handle_path /.well-known/matrix/client {
-            header Access-Control-Allow-Origin *
-            header +Content-Type application/json
-            respond `{"m.homeserver":{"base_url":"https://{{ tuwunel.domain }}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://{{ livekit.domain }}", "jwt_service_url":"https://{{ livekit.domain }}/sfu/get"}]}`
-        }
-        handle_path /.well-known/matrix/client {
-            header Access-Control-Allow-Origin *
-            header +Content-Type application/json
-            respond `{"m.server":"{{ tuwunel.domain }}:443"}`
-        }
-
-        reverse_proxy {{tuwunel.service}}:8008
+    
+    handle_path /.well-known/matrix/client {
+        header Access-Control-Allow-Origin *
+        header +Content-Type application/json
+        respond `{"m.homeserver":{"base_url":"https://{{ tuwunel.domain }}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://{{ livekit.domain }}", "jwt_service_url":"https://{{ livekit.domain }}/sfu/get"}]}`
     }
+    handle_path /.well-known/matrix/client {
+        header Access-Control-Allow-Origin *
+        header +Content-Type application/json
+        respond `{"m.server":"{{ tuwunel.domain }}:443"}`
+    }
+    #header * Upgrade $http_upgrade
+    #header * Connection $connection_upgrade
+    reverse_proxy {{tuwunel.service}}:8008
+
 }
 
 {{ tuwunel.server_name }}, {{tuwunel.server_name}}:8448 {
     # TLS configuration using your custom certificates
     # tls /etc/ssl/certs/custom.crt /etc/ssl/private/custom.key
     import "secure-headers"
-    route {      
-        handle_path /.well-known/matrix/client {
-            header Access-Control-Allow-Origin *
-            header +Content-Type application/json
-            respond `{"m.homeserver":{"base_url":"https://{{ tuwunel.domain }}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://{{ livekit.domain }}", "jwt_service_url":"https://{{ livekit.domain }}/sfu/get"}]}`        
-        }
-        handle_path /.well-known/matrix/client {
-            header Access-Control-Allow-Origin *
-            header +Content-Type application/json
-            respond `{"m.server":"{{ tuwunel.domain }}:443"}`        
-        }
+    
+    handle_path /.well-known/matrix/client {
+        header Access-Control-Allow-Origin *
+        header +Content-Type application/json
+        respond `{"m.homeserver":{"base_url":"https://{{ tuwunel.domain }}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://{{ livekit.domain }}", "jwt_service_url":"https://{{ livekit.domain }}/sfu/get"}]}`        
     }
-
+    handle_path /.well-known/matrix/client {
+        header Access-Control-Allow-Origin *
+        header +Content-Type application/json
+        respond `{"m.server":"{{ tuwunel.domain }}:443"}`        
+    }
+    #header * Upgrade $http_upgrade
+    #header * Connection $connection_upgrade
     reverse_proxy {{tuwunel.service}}:8008
 }
 

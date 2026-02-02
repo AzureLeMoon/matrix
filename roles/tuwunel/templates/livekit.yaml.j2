@@ -9,6 +9,15 @@ rtc:
     port_range_end: {{ livekit.ports.udp_end }}
     use_external_ip: true
     enable_loopback_candidate: false
+    packet_buffer_size_video: 700
+    packet_buffer_size_audio: 400
+    pli_throttle:
+      low_quality: 250ms
+      mid_quality: 650ms
+      high_quality: 650ms
+    batch_io:
+      batch_size: 128
+      max_flush_interval: 2ms          
     turn_servers:
     - host: {{ coturn.domain }}
       port: 3478
