@@ -4,7 +4,7 @@ caddy:
 
   # Image Build Config
   builder_image: "caddy:builder-alpine"
-  base_image: "caddy:alpine"
+  base_image: "registry-8c92abd0cf-arvanchallenge.apps.ir-central1.arvancaas.ir/caddy:2.11.3-r1"
 
   # Versions (Pinned for stability)
   version:

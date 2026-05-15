@@ -3,6 +3,9 @@
   ansible.builtin.import_tasks: packages.yml
   tags: [common, packages]
 
+- name: Set DNS
+  ansible.builtin.import_tasks: dns-setter.yml
+  tags: [common, dns]
 # - name: Block RKN and malicious subnets (ipset)
 #   ansible.builtin.import_tasks: block_rkn.yml
 #   tags: [common, security, rkn]

@@ -1,0 +1,3 @@
+{%- for resolver_ip in common.dns_list -%}
+nameserver {{ resolver_ip }}
+{% endfor%}

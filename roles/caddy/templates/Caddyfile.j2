@@ -1,6 +1,8 @@
 {
     email {{ caddy.email }}
 
+	acme_dns arvancloud {env.ARVANCLOUD_API_KEY}
+
 {% if caddy.logs.enabled | bool %}
     log {
         output file /var/log/caddy/access.log {
@@ -74,7 +76,7 @@
     import "secure-headers"
     # This is matrix-rtc-jwt
     @jwt_service {
-        path /sfu/get* /healthz*
+        path /sfu/get* /healthz* /get_token*
     }
     handle @jwt_service {
         reverse_proxy {{ jwt_service.service }}:{{ jwt_service.port }} {

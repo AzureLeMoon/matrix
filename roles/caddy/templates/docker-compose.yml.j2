@@ -29,6 +29,7 @@ services:
     environment:    
       # ACME
       ACME_EMAIL: "{{ caddy.email }}"    
+      ARVANCLOUD_API_KEY: "{{ vault_matrix.caddy.arvancloud_api_key}}"
       # Timezone
       TZ: "{{ system.timezone | default('UTC') }}"
 

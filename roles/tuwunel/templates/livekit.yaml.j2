@@ -7,17 +7,19 @@ rtc:
     tcp_port: {{ livekit.ports.tcp }}
     port_range_start: {{ livekit.ports.udp_start }}
     port_range_end: {{ livekit.ports.udp_end }}
-    use_external_ip: true
+    #use_external_ip: false
     enable_loopback_candidate: false
-    packet_buffer_size_video: 700
-    packet_buffer_size_audio: 400
+    packet_buffer_size_video: 1000
+    packet_buffer_size_audio: 600
     pli_throttle:
-      low_quality: 250ms
-      mid_quality: 650ms
-      high_quality: 650ms
+      low_quality: 150ms
+      mid_quality: 450ms
+      high_quality: 450ms
     batch_io:
       batch_size: 128
-      max_flush_interval: 2ms          
+      max_flush_interval: 2ms  
+    stun_servers:
+    - {{ coturn.domain }}       
     turn_servers:
     - host: {{ coturn.domain }}
       port: 3478
