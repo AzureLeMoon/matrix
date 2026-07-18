@@ -1,0 +1,24 @@
+---
+- name: Create netbird directory
+  ansible.builtin.file:
+    path: /opt/netbird
+    state: directory
+    mode: "0755"
+
+- name: Copy netbird config template
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/opt/netbird/{{ item }}"
+    mode: "0644"
+    force: true
+  loop:
+    - config.yaml
+    - dashboard.env
+    - docker-compose.yml
+    - proxy.env
+
+- name: Start Netbird via docker compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/netbird
+    state: present
+  ignore_errors: true

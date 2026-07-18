@@ -1,0 +1,44 @@
+---
+- name: Create sniproxy directory
+  ansible.builtin.file:
+    path: /opt/sniproxy
+    state: directory
+    mode: "0755"
+
+- name: Get netbird wt0 IPv4 address
+  ansible.builtin.shell: ip -4 addr show wt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+  register: wt0_ipv4_raw
+  changed_when: false
+
+- name: Get netbird wt0 IPv6 address
+  ansible.builtin.shell: ip -6 addr show wt0 | grep -oP '(?<=inet6\s)[a-f0-9:]+(?=/)' | head -n 1
+  register: wt0_ipv6_raw
+  changed_when: false
+
+- name: Set netbird IP variables
+  ansible.builtin.set_fact:
+    netbird_ipv4: "{{ wt0_ipv4_raw.stdout }}"
+    netbird_ipv6: "{{ wt0_ipv6_raw.stdout }}"
+
+- name: Copy sniproxy config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /opt/sniproxy/config.yaml
+    mode: "0644"
+
+- name: Copy domainlist.csv
+  ansible.builtin.copy:
+    src: domainlist.csv
+    dest: /opt/sniproxy/domainlist.csv
+    mode: "0644"
+
+- name: Copy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/sniproxy/docker-compose.yml
+    mode: "0644"
+
+- name: Start sniproxy via docker compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/sniproxy
+    state: present

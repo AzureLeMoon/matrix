@@ -1,0 +1,10 @@
+services:
+  sniproxy:
+    image: ghcr.io/mosajjal/sniproxy:latest
+    container_name: sniproxy
+    network_mode: "host"
+    restart: always
+    volumes:
+      - /opt/sniproxy/config.yaml:/tmp/config.yaml
+      - /opt/sniproxy/domainlist.csv:/tmp/domainlist.csv
+    command: ["--config", "/tmp/config.yaml"]

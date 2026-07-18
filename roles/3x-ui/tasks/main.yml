@@ -1,0 +1,96 @@
+---
+- name: Create 3x-ui directory
+  ansible.builtin.file:
+    path: /opt/3x-ui
+    state: directory
+    mode: "0755"
+
+- name: Create subdirectories for 3x-ui
+  ansible.builtin.file:
+    path: "/opt/3x-ui/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - db
+    - cert
+
+- name: Fetch existing ArvanCloud DNS records
+  ansible.builtin.uri:
+    url: "https://napi.arvancloud.ir/cdn/4.0/domains/{{ domain.base }}/dns-records"
+    method: GET
+    headers:
+      Authorization: "Apikey {{ vault_infra.arvancloud_api_key }}"
+  register: arvan_dns_records
+  ignore_errors: true
+  delegate_to: 127.0.0.1
+
+- name: Parse existing ArvanCloud DNS records
+  ansible.builtin.set_fact:
+    root_record: "{{ (arvan_dns_records.json.data | default([])) | selectattr('name', 'equalto', subdomain) | list | first | default(none) }}"
+    panel_record: "{{ (arvan_dns_records.json.data | default([])) | selectattr('name', 'equalto', subdomain ~ '-panel') | list | first | default(none) }}"
+    sub_record: "{{ (arvan_dns_records.json.data | default([])) | selectattr('name', 'equalto', subdomain ~ '-sub') | list | first | default(none) }}"
+
+- name: Create or update ArvanCloud DNS record for root subdomain
+  ansible.builtin.uri:
+    url: "https://napi.arvancloud.ir/cdn/4.0/domains/{{ domain.base }}/dns-records{{ '/' ~ root_record.id if root_record else '' }}"
+    method: "{{ 'PUT' if root_record else 'POST' }}"
+    headers:
+      Authorization: "Apikey {{ vault_infra.arvancloud_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      type: "a"
+      name: "{{ subdomain }}"
+      value:
+        - ip: "{{ hostvars[inventory_hostname]['ansible_ssh_host'] }}"
+      cloud: false
+    status_code: [200, 201]
+  delegate_to: 127.0.0.1
+  when: root_record is none or (root_record.value | length > 0 and root_record.value[0].ip != hostvars[inventory_hostname]['ansible_ssh_host'])
+
+- name: Create or update ArvanCloud DNS record for panel subdomain
+  ansible.builtin.uri:
+    url: "https://napi.arvancloud.ir/cdn/4.0/domains/{{ domain.base }}/dns-records{{ '/' ~ panel_record.id if panel_record else '' }}"
+    method: "{{ 'PUT' if panel_record else 'POST' }}"
+    headers:
+      Authorization: "Apikey {{ vault_infra.arvancloud_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      type: "a"
+      name: "{{ subdomain }}-panel"
+      value:
+        - ip: "{{ hostvars[inventory_hostname]['ansible_ssh_host'] }}"
+      cloud: true
+    status_code: [200, 201]
+  delegate_to: 127.0.0.1
+  when: panel_record is none or (panel_record.value | length > 0 and panel_record.value[0].ip != hostvars[inventory_hostname]['ansible_ssh_host'])
+
+- name: Create or update ArvanCloud DNS record for sub subdomain
+  ansible.builtin.uri:
+    url: "https://napi.arvancloud.ir/cdn/4.0/domains/{{ domain.base }}/dns-records{{ '/' ~ sub_record.id if sub_record else '' }}"
+    method: "{{ 'PUT' if sub_record else 'POST' }}"
+    headers:
+      Authorization: "Apikey {{ vault_infra.arvancloud_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      type: "a"
+      name: "{{ subdomain }}-sub"
+      value:
+        - ip: "{{ hostvars[inventory_hostname]['ansible_ssh_host'] }}"
+      cloud: true
+    status_code: [200, 201]
+  delegate_to: 127.0.0.1
+  when: sub_record is none or (sub_record.value | length > 0 and sub_record.value[0].ip != hostvars[inventory_hostname]['ansible_ssh_host'])
+  
+- name: Copy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/3x-ui/docker-compose.yml
+    mode: "0644"
+
+- name: Start 3x-ui via docker compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/3x-ui
+    state: present

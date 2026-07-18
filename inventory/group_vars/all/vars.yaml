@@ -6,7 +6,7 @@ domain:
   base: "netetkharabe.ir"
 
 # [ USERS ]
-deploy_user: "ubuntu"
+deploy_user: "debian"
 
 admin:
   username: "admin"
@@ -17,6 +17,7 @@ common:
   dns_list:
     - 37.32.2.2
     - 37.32.2.4
+    - 1.1.1.1
 
 # ==============================================================================
 # ⚙️ SYSTEM & DOCKER

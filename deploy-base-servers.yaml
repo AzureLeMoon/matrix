@@ -1,0 +1,13 @@
+---
+- name: Deploy base_servers infrastructure
+  hosts: base_servers
+  become: true
+  roles:
+    # - common
+    # - docker
+    - 3x-ui
+    #- aether
+    #- teamspeak
+    #- netbird
+    # - netbird-client
+    # - sniproxy

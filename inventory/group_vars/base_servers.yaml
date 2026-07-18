@@ -1,0 +1,14 @@
+---
+# ==============================================================================
+# 🔧 BASE SERVERS CONFIGURATION
+# ==============================================================================
+
+# [ Netbird ]
+# Fill these in before deploying or manually bringing up the stack
+netbird_domain: "netbird.{{domain.base}}"
+netbird_setup_key: "{{ vault_netbird.setup_key }}"
+netbird_letsencrypt_email: "{{ admin.email }}"
+netbird_proxy_domain: "netbird-proxy.{{domain.base}}"
+netbird_proxy_token: "{{ vault_netbird.proxy_token }}"
+netbird_auth_secret: "{{ vault_netbird.auth_secret }}"
+netbird_encryption_key: "{{ vault_netbird.encryption_key }}"
