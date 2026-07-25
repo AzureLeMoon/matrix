@@ -12,3 +12,6 @@ netbird_proxy_domain: "netbird-proxy.{{domain.base}}"
 netbird_proxy_token: "{{ vault_netbird.proxy_token }}"
 netbird_auth_secret: "{{ vault_netbird.auth_secret }}"
 netbird_encryption_key: "{{ vault_netbird.encryption_key }}"
+
+# [ 9Router ]
+router_domain: "9router.{{netbird_proxy_domain}}"

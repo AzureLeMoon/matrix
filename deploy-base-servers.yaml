@@ -5,9 +5,10 @@
   roles:
     # - common
     # - docker
-    - 3x-ui
+    # - 3x-ui
     #- aether
     #- teamspeak
     #- netbird
     # - netbird-client
     # - sniproxy
+    - 9router
