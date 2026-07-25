@@ -90,6 +90,12 @@
     dest: /opt/3x-ui/docker-compose.yml
     mode: "0644"
 
+- name: Copy litestream.yml
+  ansible.builtin.template:
+    src: litestream.yml.j2
+    dest: /opt/3x-ui/litestream.yml
+    mode: "0644"
+
 - name: Start 3x-ui via docker compose
   community.docker.docker_compose_v2:
     project_src: /opt/3x-ui

@@ -47,6 +47,12 @@
     dest: /opt/9router/.env.searxng
     mode: "0644"    
 
+- name: Copy litestream.yml
+  ansible.builtin.template:
+    src: litestream.yml.j2
+    dest: /opt/9router/litestream.yml
+    mode: "0644"
+
 - name: Start 9router via docker compose
   community.docker.docker_compose_v2:
     project_src: /opt/9router

@@ -1,0 +1,9 @@
+dbs:
+  - path: /etc/x-ui/x-ui.db
+    replicas:
+      - type: s3
+        endpoint: "{{ vault_s3_backup.endpoint_url }}"
+        bucket: "{{ vault_s3_backup.bucket_name }}"
+        path: 3x-ui/x-ui.db
+        access-key-id: "{{ vault_s3_backup.access_key }}"
+        secret-access-key: "{{ vault_s3_backup.secret_key }}"
